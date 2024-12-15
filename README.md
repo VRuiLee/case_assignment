@@ -36,13 +36,6 @@ The application enforces the following validation rules:
 
 ## Any design decisions made
 
-
-Backend Framework:
-
-
-
-The app is designed in a way that makes it easy to move to a cloud service like AWS in the future, if needed.
-
 1. **Backend Framework:** 
    - Flask was chosen because it’s simple and works well for smaller projects like this one.
 
