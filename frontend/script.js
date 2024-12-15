@@ -1,40 +1,44 @@
-// Sätta variabler
+// Fetch relevant elements from the DOM
 const inputElement = document.querySelector('input');
 const buttonElement = document.querySelector('button');
 const resultElement = document.querySelector('.result');
 
-//Skickar till backend och tillbaka till html
-async function handleInput() { // Funktionen kan pausa med "await" utan att blockera resten av programmet
+// Sends input to the backend and updates the result in the HTML
+async function handleInput() {
     try {
+        // Send input data to the backend
         const response = await fetch('http://localhost:5000/validate', {
             method: 'POST', 
             headers: {
               'Content-Type': 'application/json', 
             },
-            body: JSON.stringify({ input: inputElement.value }), 
-        });  //All den här informationen skickas till backend och vi får tillbaka det i response
+            body: JSON.stringify({ input: inputElement.value }),
+        });
 
+        // Handle non-OK responses from the backend
         if (!response.ok) {
             const errorData = await response.json();
             resultElement.innerHTML = `Error: ${errorData.error || 'Something went wrong'}`;
             return;
         }
 
-        const data = await response.json(); // Gör respons (i json format) till en javascript objekt
+        // Parse the backend response as JSON
+        const data = await response.json();
 
-        resultElement.innerHTML = data.message; //Sparar i resultElement        
+        // Update the result in the HTML
+        resultElement.innerHTML = data.message; 
         
     } catch (error) { 
         console.error(error);
     }
 }
 
-//Kör funktionen om man trycker enter
+// Initiate validation when pressing Enter
 inputElement.addEventListener('keypress', (event) => {
     if (event.key === 'Enter') {
         handleInput();
     }
 });
 
-//Kör funktionen om man trycker på knappen
+// Initiate validation when button is clicked
 buttonElement.addEventListener('click', handleInput);

@@ -16,7 +16,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
 DB_PORT = os.getenv("DB_PORT")
 
-# Funktion för att ansluta till databasen
+# Function to establish a database connection
 def get_db_connection():
     return psycopg2.connect(
         host=DB_HOST,
@@ -27,12 +27,15 @@ def get_db_connection():
         cursor_factory=RealDictCursor
     )
 
-
-app = Flask(__name__) #Skapa en server
-CORS(app) #Tillåter att alla portar kan kommunicera med backend
+app = Flask(__name__)
+CORS(app)  # Allow all ports to communicate with backend
 
 def validate_input(data):
-
+    """
+    Validate the user input against several rules, including:
+    - Length, character composition, and banned words.
+    - Checking for duplicates in the database.
+    """
     banned_words = {"password", "admin", "12345678", "letmein", "welcome"}
     special_characters = string.punctuation
 
@@ -46,18 +49,17 @@ def validate_input(data):
         "No banned words": data.lower() not in banned_words,
     }
 
-   
     try:
-        # Anslut till databasen och kontrollera duplicat
-        conn = get_db_connection() # Öppnar till databasen
+        # Connect to the database and check for duplicates
+        conn = get_db_connection()
 
-        with conn.cursor() as cursor: #Automatisk stägning av cursorn
-            # Kontrollera om strängen redan finns
-            cursor.execute("SELECT 1 FROM validated_inputs WHERE input_text = %s", (data,)) #SQL fråga, retunerar 1 om det finns
+        with conn.cursor() as cursor:
+            # Check if the string already exists in the database
+            cursor.execute("SELECT 1 FROM validated_inputs WHERE input_text = %s", (data,))
             is_duplicate = cursor.fetchone() is not None
             validations["No duplicates"] = not is_duplicate
 
-            # Om strängen är validerad, spara i databasen
+            # If all validations pass, store the input in the database
             if all(validations.values()):
                 cursor.execute("INSERT INTO validated_inputs (input_text) VALUES (%s)", (data,))
                 conn.commit()
@@ -68,8 +70,7 @@ def validate_input(data):
         validations["Database error"] = False
         print(f"Database error: {e}")
 
-
-    # Store failed keys in failed
+    # Identify failed validation rules
     failed = [key for key, value in validations.items() if not value]
 
     return {
@@ -77,35 +78,31 @@ def validate_input(data):
         "failed": failed,
     }
 
-#Funktionen validate() kommer att köras när /validate anropas med en POST-förfrågan
-
 @app.route('/validate', methods=['POST'])
 def validate():
+    """
+    The route where you send user input to validate it.
+    It takes JSON data with a key 'input' and gives back the result.
+    """
     try:
-        #Ändrar imput från json format till sträng
+        # Extract input data from the request
         input_data = request.json.get('input', '')
 
-        #TODO funkar ej:
         if not input_data:
             return jsonify({"error": "Input data is missing"}), 400
 
-        # Får tillbaka om succsess och vilka som är failed
+        # Perform input validation
         validation_result = validate_input(input_data)
 
         if validation_result["success"]:
-            return jsonify({
-                "message": f"Validation passed"
-            }) #Konverterar till JSON format
+            return jsonify({"message": "Validation passed"})
         else:
             return jsonify({
-                "message": f"Validation failed! Check if fulfilled: <br> {'<br>'.join(validation_result['failed'])}",
+                "message": "Validation failed! Check the following: <br> " + '<br>'.join(validation_result['failed']),
             })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 if __name__ == '__main__':
     app.run(debug=True)
-
-
